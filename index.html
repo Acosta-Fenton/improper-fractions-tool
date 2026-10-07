@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fraction Bar Practice: Improper Fractions</title>
+<style>
+  :root {
+    --paper: #fbfdff;
+    --grid: #dbe7f5;
+    --ink: #1d2b4a;
+    --muted: #55627f;
+    --card: #ffffff;
+    --line: #1d2b4a;
+    --empty: #ffffff;
+    --a: #2f6fed;       /* first fraction / shaded in build mode */
+    --b: #f08a1c;       /* second fraction */
+    --good: #1f9d63;
+    --good-bg: #e2f6ec;
+    --bad: #c4362c;
+    --bad-bg: #fde8e6;
+    --tip-bg: #fff4d6;
+    --shadow: 0 3px 0 rgba(29,43,74,.18);
+  }
+  :root:not([data-theme="light"]) {
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+    font-family: "Trebuchet MS", "Segoe UI", Verdana, system-ui, sans-serif;
+    font-size: 18px;
+    line-height: 1.4;
+  }
+
+  .wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  h1 { font-size: clamp(1.6rem, 4.5vw, 2.4rem); margin: 0; letter-spacing: -0.01em; line-height: 1.1; }
+  .sub { color: var(--muted); margin: 4px 0 0; font-size: 1rem; }
+
+  .scoreboard { display: flex; gap: 8px; }
+  .stat { background: var(--card); border: 3px solid var(--line); border-radius: 12px; padding: 6px 14px; text-align: center; box-shadow: var(--shadow); min-width: 84px; }
+  .stat b { display: block; font-size: 1.5rem; line-height: 1.1; }
+  .stat span { font-size: .8rem; color: var(--muted); }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 14px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tab {
+    font: inherit; font-weight: 700; color: var(--ink);
+    background: var(--card); border: 3px solid var(--line); border-radius: 12px;
+    padding: 10px 16px; cursor: pointer; box-shadow: var(--shadow);
+    min-height: 48px;
+  }
+  .tab[aria-selected="true"] { background: var(--ink); color: #fff; }
+  .opt { display: flex; align-items: center; gap: 8px; font-size: 1rem; }
+  select {
+    font: inherit; font-size: 1rem; padding: 8px 10px; border: 3px solid var(--line);
+    border-radius: 10px; background: var(--card); color: var(--ink); min-height: 44px;
+  }
+  input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--ink); }
+
+  .board {
+    background: var(--card); border: 3px solid var(--line); border-radius: 18px;
+    padding: 20px; box-shadow: var(--shadow);
+  }
+  .prompt { font-size: clamp(1.15rem, 3vw, 1.45rem); font-weight: 700; margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+
+  /* stacked fraction */
+  .frac { display: inline-flex; flex-direction: column; align-items: center; line-height: 1; vertical-align: middle; font-weight: 800; margin: 0 .15em; }
+  .frac .n { padding: 0 .3em .12em; border-bottom: .12em solid currentColor; }
+  .frac .d { padding: .12em .3em 0; }
+  .prompt .frac { font-size: 2.2rem; }
+  .mixed { display: inline-flex; align-items: center; gap: .05em; font-weight: 800; }
+  .mixed .whole { font-size: 1.1em; margin-right: .1em; }
+  .inline .frac { font-size: 1.15em; }
+
+  /* bars */
+  .bars { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 4px; }
+  .bar { display: flex; width: 100%; max-width: 560px; height: 56px; border: 4px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--empty); }
+  .sec {
+    flex: 1 1 0; border: 0; border-right: 3px solid var(--line); background: var(--empty);
+    padding: 0; margin: 0; cursor: default; position: relative; min-width: 0;
+  }
+  .sec:last-child { border-right: 0; }
+  .sec.on { background: var(--shade, var(--a)); }
+  .sec.on::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,.28) 0 6px, transparent 6px 12px);
+  }
+  button.sec { cursor: pointer; }
+  button.sec:hover:not(.on) { background: #e9f0fd; }
+  button.sec:focus-visible, .tab:focus-visible, .btn:focus-visible, select:focus-visible, input:focus-visible {
+    outline: 4px solid #ffb400; outline-offset: 2px; z-index: 2;
+  }
+  .bar-label { font-size: .85rem; color: var(--muted); margin: 0 0 2px; }
+
+  .build-area { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: flex-start; }
+  .tally { font-size: 1rem; color: var(--muted); margin: 8px 0 0; }
+  .tally b { color: var(--ink); }
+
+  /* compare */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .side { border: 3px solid var(--line); border-radius: 14px; padding: 14px; background: #fcfdff; }
+  .side.a { --shade: var(--a); border-color: var(--a); }
+  .side.b { --shade: var(--b); border-color: var(--b); }
+  .side .frac { font-size: 2.6rem; }
+  .side .head { display: flex; align-items: center; justify-content: center; min-height: 80px; }
+  .side .bar { height: 46px; }
+  .hidden-bars { color: var(--muted); text-align: center; padding: 18px 8px; font-size: 1rem; border: 3px dashed var(--grid); border-radius: 10px; }
+  .side.win { box-shadow: 0 0 0 5px var(--good-bg), 0 0 0 8px var(--good); }
+
+  .answers { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+
+  /* name it */
+  .name-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+  .fi { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; }
+  .fi input { width: 92px; font: inherit; font-size: 1.6rem; font-weight: 800; text-align: center; padding: 6px; border: 3px solid var(--line); border-radius: 10px; color: var(--ink); background: #fff; }
+  .fi hr { width: 100%; margin: 0; border: 0; border-top: 5px solid var(--ink); }
+
+  .btn {
+    font: inherit; font-weight: 800; color: #fff; background: var(--ink);
+    border: 3px solid var(--line); border-radius: 12px; padding: 10px 20px;
+    cursor: pointer; box-shadow: var(--shadow); min-height: 48px;
+  }
+  .btn.alt { background: #fff; color: var(--ink); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 rgba(29,43,74,.18); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+
+  .feedback { margin-top: 16px; padding: 12px 16px; border-radius: 12px; font-size: 1.05rem; border: 3px solid transparent; }
+  .feedback:empty { display: none; }
+  .feedback.good { background: var(--good-bg); border-color: var(--good); }
+  .feedback.bad { background: var(--bad-bg); border-color: var(--bad); }
+  .feedback.tip { background: var(--tip-bg); border-color: #e0b100; }
+  .feedback p { margin: 0 0 6px; }
+  .feedback p:last-child { margin-bottom: 0; }
+
+  .legend { margin-top: 18px; color: var(--muted); font-size: .95rem; }
+
+  @media (max-width: 640px) {
+    body { font-size: 17px; }
+    .compare { grid-template-columns: 1fr; }
+    .board { padding: 14px; }
+    .bar { height: 50px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .sec { transition: background-color .08s; }
+    .btn { transition: transform .06s; }
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { color-scheme: dark; }
+  }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Fraction Bar Practice</h1>
+      <p class="sub">Improper fractions: build them, read them, and compare them.</p>
+    </div>
+    <div class="scoreboard" aria-label="Score">
+      <div class="stat"><b id="score">0</b><span>correct</span></div>
+      <div class="stat"><b id="tried">0</b><span>tried</span></div>
+      <div class="stat"><b id="streak">0</b><span>in a row</span></div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="tabs" role="tablist" aria-label="Activity">
+      <button class="tab" role="tab" id="tab-build" aria-selected="true" data-mode="build">Build it</button>
+      <button class="tab" role="tab" id="tab-name" aria-selected="false" data-mode="name">Name it</button>
+      <button class="tab" role="tab" id="tab-compare" aria-selected="false" data-mode="compare">Compare them</button>
+    </div>
+    <label class="opt">Level
+      <select id="level">
+        <option value="easy">Easy (halves, thirds, fourths)</option>
+        <option value="medium">Medium (up to eighths)</option>
+        <option value="hard">Hard (up to twelfths)</option>
+      </select>
+    </label>
+    <label class="opt" id="showBarsWrap" hidden>
+      <input type="checkbox" id="showBars" checked> Show bars while comparing
+    </label>
+  </div>
+
+  <main class="board" id="board" aria-live="polite"></main>
+
+  <p class="legend">Tip: fill each whole bar first, then shade the leftover pieces on the last bar.</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- helpers ---------- */
+  var LEVELS = {
+    easy:   { dens: [2, 3, 4],                      maxWhole: 2.5 },
+    medium: { dens: [2, 3, 4, 5, 6, 8],             maxWhole: 3 },
+    hard:   { dens: [3, 4, 5, 6, 7, 8, 9, 10, 12],  maxWhole: 3 }
+  };
+
+  var state = { mode: 'build', level: 'easy', score: 0, tried: 0, streak: 0, q: null, scored: false, done: false };
+
+  var board = document.getElementById('board');
+
+  function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+  function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+
+  function frac(n, d) {
+    return '<span class="frac"><span class="n">' + n + '</span><span class="d">' + d + '</span></span>';
+  }
+  function mixed(n, d) {
+    var w = Math.floor(n / d), r = n % d;
+    if (r === 0) return '<span class="mixed"><span class="whole">' + w + '</span></span>';
+    return '<span class="mixed"><span class="whole">' + w + '</span>' + frac(r, d) + '</span>';
+  }
+
+  function randomImproper(dens, maxWhole) {
+    var d = pick(dens);
+    var maxN = Math.floor(d * maxWhole) - 1;
+    var n;
+    var guard = 0;
+    do {
+      n = randInt(d + 1, Math.max(d + 1, maxN));
+      guard++;
+    } while (n % d === 0 && guard < 50);
+    return { n: n, d: d };
+  }
+
+  /* Draw bars. shaded = number of sections shaded in total (filled left-to-right, bar by bar). */
+  function makeBars(n, d, opts) {
+    opts = opts || {};
+    var bars = Math.ceil(n / d);
+    var wrap = document.createElement('div');
+    wrap.className = 'bars';
+    for (var b = 0; b < bars; b++) {
+      var bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.setAttribute('role', opts.interactive ? 'group' : 'img');
+      bar.setAttribute('aria-label', 'Bar ' + (b + 1) + ' of ' + bars + ', split into ' + d + ' equal parts');
+      for (var s = 0; s < d; s++) {
+        var idx = b * d + s;
+        var el = document.createElement(opts.interactive ? 'button' : 'div');
+        el.className = 'sec';
+        if (opts.interactive) {
+          el.type = 'button';
+          el.setAttribute('aria-pressed', 'false');
+          el.setAttribute('aria-label', 'Bar ' + (b + 1) + ', part ' + (s + 1) + ' of ' + d);
+          el.dataset.bar = b;
+          el.dataset.idx = s;
+        } else if (idx < opts.shaded) {
+          el.classList.add('on');
+        }
+        bar.appendChild(el);
+      }
+      wrap.appendChild(bar);
+    }
+    return wrap;
+  }
+
+  function setFeedback(kind, html) {
+    var fb = document.getElementById('fb');
+    if (!fb) return;
+    fb.className = 'feedback ' + (kind || '');
+    fb.innerHTML = html || '';
+  }
+
+  function updateScore() {
+    document.getElementById('score').textContent = state.score;
+    document.getElementById('tried').textContent = state.tried;
+    document.getElementById('streak').textContent = state.streak;
+  }
+
+  function recordFirstAttempt(correct) {
+    if (state.scored) return;
+    state.scored = true;
+    state.tried++;
+    if (correct) { state.score++; state.streak++; } else { state.streak = 0; }
+    updateScore();
+  }
+
+  /* ---------- BUILD IT ---------- */
+  function newBuild() {
+    var L = LEVELS[state.level];
+    state.q = randomImproper(L.dens, L.maxWhole);
+    state.scored = false; state.done = false;
+    renderBuild();
+  }
+
+  function renderBuild() {
+    var q = state.q;
+    var bars = Math.ceil(q.n / q.d);
+    board.innerHTML =
+      '<p class="prompt">Shade the bars to show ' + frac(q.n, q.d) + '</p>' +
+      '<p class="bar-label">You get ' + bars + (bars === 1 ? ' bar' : ' bars') + ', each split into ' + q.d + ' equal parts.</p>' +
+      '<div id="barHost"></div>' +
+      '<p class="tally" id="tally"></p>' +
+      '<div class="actions">' +
+        '<button class="btn" id="check">Check my answer</button>' +
+        '<button class="btn alt" id="clear">Clear</button>' +
+        '<button class="btn alt" id="next" hidden>Next one</button>' +
+      '</div>' +
+      '<div class="feedback" id="fb"></div>';
+
+    var host = document.getElementById('barHost');
+    var bw = makeBars(q.n, q.d, { interactive: true });
+    host.appendChild(bw);
+
+    function countOn() { return host.querySelectorAll('.sec.on').length; }
+    function updateTally() {
+      var c = countOn();
+      document.getElementById('tally').innerHTML = 'Shaded so far: <b>' + c + '</b> of <b>' + q.n + '</b> ' + (q.d === 1 ? 'part' : (q.d === 2 ? 'halves' : 'parts'));
+    }
+    updateTally();
+
+    host.addEventListener('click', function (e) {
+      var t = e.target.closest('button.sec');
+      if (!t || state.done) return;
+      var on = t.classList.toggle('on');
+      t.setAttribute('aria-pressed', on ? 'true' : 'false');
+      updateTally();
+      setFeedback('', '');
+    });
+
+    document.getElementById('clear').addEventListener('click', function () {
+      if (state.done) return;
+      host.querySelectorAll('.sec.on').forEach(function (s) { s.classList.remove('on'); s.setAttribute('aria-pressed', 'false'); });
+      updateTally(); setFeedback('', '');
+    });
+
+    document.getElementById('check').addEventListener('click', function () {
+      if (state.done) return;
+      var c = countOn();
+      if (c === 0) { setFeedback('tip', '<p>Click the parts to shade them, then check your answer.</p>'); return; }
+      if (c === q.n) {
+        // Is it "whole bars first"?
+        var barEls = host.querySelectorAll('.bar');
+        var tidy = true, seenPartial = false;
+        barEls.forEach(function (bar) {
+          var on = bar.querySelectorAll('.sec.on').length;
+          if (on === q.d) { if (seenPartial) tidy = false; }
+          else if (on > 0) { if (seenPartial) tidy = false; seenPartial = true; }
+          else { seenPartial = true; }
+        });
+        recordFirstAttempt(true);
+        state.done = true;
+        var msg = '<p><b>Yes!</b> ' + frac(q.n, q.d) + ' means ' + q.n + ' parts that are each ' + frac(1, q.d) + ' of a bar.</p>' +
+          '<p class="inline">That is ' + Math.floor(q.n / q.d) + ' whole ' + (Math.floor(q.n / q.d) === 1 ? 'bar' : 'bars') +
+          ' and ' + frac(q.n % q.d, q.d) + ' more, so ' + frac(q.n, q.d) + ' = ' + mixed(q.n, q.d) + '.</p>';
+        if (!tidy) msg += '<p>Next time, try filling whole bars first. It makes the whole number easy to see.</p>';
+        setFeedback('good', msg);
+        document.getElementById('check').disabled = true;
+        document.getElementById('clear').disabled = true;
+        document.getElementById('next').hidden = false;
+        document.getElementById('next').focus();
+      } else {
+        recordFirstAttempt(false);
+        var diff = q.n - c;
+        setFeedback('bad', '<p>You shaded <b>' + c + '</b> ' + (c === 1 ? 'part' : 'parts') + '. ' + frac(q.n, q.d) +
+          ' needs <b>' + q.n + '</b> parts.</p><p>' + (diff > 0 ? 'Shade ' + diff + ' more.' : 'Remove ' + (-diff) + '.') + '</p>');
+      }
+    });
+
+    document.getElementById('next').addEventListener('click', newBuild);
+  }
+
+  /* ---------- NAME IT ---------- */
+  function newName() {
+    var L = LEVELS[state.level];
+    state.q = randomImproper(L.dens, L.maxWhole);
+    state.scored = false; state.done = false;
+    renderName();
+  }
+
+  function renderName() {
+    var q = state.q;
+    board.innerHTML =
+      '<p class="prompt">What improper fraction do the shaded parts show?</p>' +
+      '<div id="barHost"></div>' +
+      '<div class="name-row">' +
+        '<div class="fi">' +
+          '<input id="numIn" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Numerator (top number)">' +
+          '<hr>' +
+          '<input id="denIn" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Denominator (bottom number)">' +
+        '</div>' +
+      '</div>' +
+      '<div class="actions">' +
+        '<button class="btn" id="check">Check my answer</button>' +
+        '<button class="btn alt" id="next" hidden>Next one</button>' +
+      '</div>' +
+      '<div class="feedback" id="fb"></div>';
+
+    document.getElementById('barHost').appendChild(makeBars(q.n, q.d, { shaded: q.n }));
+    var numIn = document.getElementById('numIn'), denIn = document.getElementById('denIn');
+    numIn.focus();
+
+    function submit() {
+      if (state.done) return;
+      var n = parseInt(numIn.value, 10), d = parseInt(denIn.value, 10);
+      if (isNaN(n) || isNaN(d)) { setFeedback('tip', '<p>Type both numbers: the top number (how many parts are shaded) and the bottom number (how many parts in one bar).</p>'); return; }
+      if (n === q.n && d === q.d) {
+        recordFirstAttempt(true);
+        state.done = true;
+        setFeedback('good', '<p><b>Right!</b> ' + q.n + ' shaded parts, and each bar has ' + q.d + ' parts, so it is ' + frac(q.n, q.d) + '.</p>' +
+          '<p class="inline">You can also say ' + mixed(q.n, q.d) + '.</p>');
+        document.getElementById('check').disabled = true;
+        numIn.disabled = denIn.disabled = true;
+        document.getElementById('next').hidden = false;
+        document.getElementById('next').focus();
+      } else {
+        recordFirstAttempt(false);
+        var hint = '';
+        if (d !== q.d) hint = 'The bottom number tells how many equal parts are in <b>one</b> bar. Count the parts in a single bar.';
+        else hint = 'The top number counts <b>all</b> the shaded parts across every bar.';
+        setFeedback('bad', '<p>Not yet. ' + hint + '</p>');
+      }
+    }
+    document.getElementById('check').addEventListener('click', submit);
+    [numIn, denIn].forEach(function (el) { el.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); }); });
+    document.getElementById('next').addEventListener('click', newName);
+  }
+
+  /* ---------- COMPARE ---------- */
+  function newCompare() {
+    var L = LEVELS[state.level];
+    var a, b, guard = 0;
+    do {
+      a = randomImproper(L.dens, L.maxWhole);
+      b = randomImproper(L.dens, L.maxWhole);
+      guard++;
+      var equal = a.n * b.d === b.n * a.d;
+      var ok = a.d !== b.d && (!equal || Math.random() < 0.12);
+    } while (!ok && guard < 400);
+    state.q = { a: a, b: b, ask: Math.random() < 0.5 ? 'bigger' : 'smaller' };
+    state.scored = false; state.done = false;
+    renderCompare();
+  }
+
+  function renderCompare() {
+    var q = state.q, a = q.a, b = q.b;
+    var showBars = document.getElementById('showBars').checked;
+    board.innerHTML =
+      '<p class="prompt">Which fraction is <u>' + q.ask + '</u>?</p>' +
+      '<div class="compare">' +
+        '<section class="side a" id="sideA" aria-label="Left fraction"><div class="head">' + frac(a.n, a.d) + '</div><div id="barsA"></div></section>' +
+        '<section class="side b" id="sideB" aria-label="Right fraction"><div class="head">' + frac(b.n, b.d) + '</div><div id="barsB"></div></section>' +
+      '</div>' +
+      '<div class="answers">' +
+        '<button class="btn" id="ansA">' + 'Left: ' + a.n + '/' + a.d + '</button>' +
+        '<button class="btn" id="ansB">' + 'Right: ' + b.n + '/' + b.d + '</button>' +
+        '<button class="btn alt" id="ansE">They are equal</button>' +
+        '<button class="btn alt" id="next" hidden>Next one</button>' +
+      '</div>' +
+      '<div class="feedback" id="fb"></div>';
+
+    function fill(id, f, revealed) {
+      var host = document.getElementById(id);
+      if (showBars || revealed) {
+        host.innerHTML = '';
+        host.appendChild(makeBars(f.n, f.d, { shaded: f.n }));
+      } else {
+        host.innerHTML = '<div class="hidden-bars">Bars are hidden. Think about it first!</div>';
+      }
+    }
+    fill('barsA', a, false); fill('barsB', b, false);
+
+    var cmp = a.n * b.d - b.n * a.d; // >0 means A bigger
+    var correct;
+    if (cmp === 0) correct = 'E';
+    else if (q.ask === 'bigger') correct = cmp > 0 ? 'A' : 'B';
+    else correct = cmp > 0 ? 'B' : 'A';
+
+    function answer(choice) {
+      if (state.done) return;
+      var ok = choice === correct;
+      if (ok) {
+        recordFirstAttempt(true);
+        state.done = true;
+        fill('barsA', a, true); fill('barsB', b, true);
+        var cd = a.d * b.d;
+        var an = a.n * b.d, bn = b.n * a.d;
+        var winner = cmp === 0 ? null : (cmp > 0 ? 'A' : 'B');
+        if (correct === 'A' || correct === 'B') document.getElementById(correct === 'A' ? 'sideA' : 'sideB').classList.add('win');
+        var why = '<p class="inline"><b>Correct!</b> ' + frac(a.n, a.d) + ' = ' + mixed(a.n, a.d) + ' and ' + frac(b.n, b.d) + ' = ' + mixed(b.n, b.d) + '.</p>';
+        if (cmp === 0) {
+          why += '<p class="inline">They are equal. Using a common denominator: ' + frac(an, cd) + ' = ' + frac(bn, cd) + '.</p>';
+        } else {
+          var bigger = cmp > 0 ? 'left' : 'right';
+          why += '<p class="inline">The ' + bigger + ' fraction is bigger. Using a common denominator: ' + frac(an, cd) + ' and ' + frac(bn, cd) + '.</p>';
+        }
+        setFeedback('good', why);
+        ['ansA', 'ansB', 'ansE'].forEach(function (id) { document.getElementById(id).disabled = true; });
+        document.getElementById('next').hidden = false;
+        document.getElementById('next').focus();
+      } else {
+        recordFirstAttempt(false);
+        var tip;
+        if (!showBars) tip = 'Turn on "Show bars while comparing" to check with a picture.';
+        else if (a.d !== b.d) tip = 'Look at the bars. Parts in different bars are different sizes, so count how much of the bars is shaded, not just how many parts.';
+        else tip = 'Try again.';
+        setFeedback('bad', '<p>Not quite. Take another look.</p><p>' + tip + '</p>');
+        if (!showBars) { fill('barsA', a, true); fill('barsB', b, true); }
+      }
+    }
+    document.getElementById('ansA').addEventListener('click', function () { answer('A'); });
+    document.getElementById('ansB').addEventListener('click', function () { answer('B'); });
+    document.getElementById('ansE').addEventListener('click', function () { answer('E'); });
+    document.getElementById('next').addEventListener('click', newCompare);
+  }
+
+  /* ---------- wiring ---------- */
+  function start() {
+    document.getElementById('showBarsWrap').hidden = state.mode !== 'compare';
+    if (state.mode === 'build') newBuild();
+    else if (state.mode === 'name') newName();
+    else newCompare();
+  }
+
+  document.querySelectorAll('.tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      state.mode = t.dataset.mode;
+      document.querySelectorAll('.tab').forEach(function (x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); });
+      start();
+    });
+  });
+  document.getElementById('level').addEventListener('change', function (e) { state.level = e.target.value; start(); });
+  document.getElementById('showBars').addEventListener('change', function () { if (state.mode === 'compare' && !state.done) renderCompare(); });
+
+  updateScore();
+  start();
+})();
+</script>
+</body>
+</html>
